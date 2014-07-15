@@ -165,8 +165,8 @@ task pull650 << {
     pullRepositories("C:\\Development\\Projects\\6.5.0")
 }
 
-task pullInFolder (type: GradleBuild) << {
-    pullRepositories("$dir")
+task pullInFolder << {
+    pullRepositories(pathToRoot)
 }
 
 task cloneRepo << {
