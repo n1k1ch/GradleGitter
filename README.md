@@ -8,5 +8,5 @@ Usage
 --------------
 
 ```sh
-gradle pullInFolder -PpathToRoot="C:\Users\Repositories"
+gradle pullInFolder -PpathToRoot="C:\Development\Repositories"
 ```
