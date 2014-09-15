@@ -106,27 +106,33 @@ def executeConcurrently(threads, closure) {
     }
 }
 
-def pullRepositories = { directory ->
-    println directory
-
+def listDirectories = { directory ->
     def baseDirectories = [directory]
-    def repoz = []
+    def result = []
 
     baseDirectories.each{dir ->
         def baseDir = new File(dir)
 
         baseDir.listFiles().each{ file -> 
             if(file.isDirectory()) {
-                repoz << file
+                result << file
             }
         }
     }
+
+    return result
+}
+
+def pullRepositories = { directory ->
+    println directory
+
+    def repoz = listDirectories(directory)
 
     def dateFormat = new SimpleDateFormat("yyyy-MM-dd, kk:mm")
     def results = []
     def out = services.get(StyledTextOutputFactory).create("blah")
 
-    executeConcurrently(30, {
+    executeConcurrently(20, {
         repoz.eachParallel { repoFile ->
             try {
                 def grgit = Grgit.open(repoFile.path)
@@ -148,12 +154,18 @@ def pullRepositories = { directory ->
         }
     })   
 
-    results.each {
-        def toPrint = it.repoName + ":\n" + it.result + "\n";
-        if(it.success)
-            out.withStyle(Style.Identifier).println(toPrint)
-        else
-            out.withStyle(Style.Failure).println(toPrint)
+
+    results.sort{it.repoName}.
+        each {
+        if(it != null) {
+            def toPrint = it.repoName + ":\n" + it.result + "\n";
+            if(it.success)
+                out.withStyle(Style.Identifier).println(toPrint)
+            else
+                out.withStyle(Style.Failure).println(toPrint)
+            } else {
+                out.withStyle(Style.Failure).println("it is null")
+            }
     }
 }
 
@@ -165,6 +177,10 @@ task pull650 << {
     pullRepositories("C:\\Development\\Projects\\6.5.0")
 }
 
+task pull652 << {
+    pullRepositories("C:\\Development\\Projects\\6.5.2")
+}
+
 task pullInFolder << {
     pullRepositories(pathToRoot)
 }
@@ -174,4 +190,65 @@ task cloneRepo << {
 
     def grgit = Grgit.clone(dir: new File("BatRunner"), uri: "$uri")
     println grgit.dump()
+}
+
+def tezzzt(){
+    listDirectories("C:\\Development\\Projects\\6.5.1")
+}
+
+def doForRepository = {directory, clozure ->
+    println directory
+
+    def repoz = listDirectories(directory)
+    
+    def dateFormat = new SimpleDateFormat("yyyy-MM-dd, kk:mm")
+    def results = []
+    def out = services.get(StyledTextOutputFactory).create("blah")
+
+    executeConcurrently(20, {
+        repoz.eachParallel { repoFile ->
+            clozure(repoFile);
+        }
+    })
+}
+
+
+task showBranchesAndCurrent << {
+    println 'Show branches'
+    def out = services.get(StyledTextOutputFactory).create("blah")
+
+    doForRepository("$pathToRoot", { repoFile ->
+        def grgit = Grgit.open(repoFile.path)
+
+        try {
+            def branchService = grgit.branch
+            def currentBranch = branchService.current
+            def name = currentBranch.fullName.replaceAll('refs/heads/', '')
+            println "\n\n$repoFile.name: $name"
+
+            def branches = branchService.list()
+            branches.each{branch ->
+                def currFullName = branch.fullName.replaceAll('refs/heads/', '')
+                println "$currFullName << [$branch.trackingBranch.fullName]"
+            }
+        } catch(e) {
+            out.withStyle(Style.Failure).println(e)
+        }
+    })
+}
+
+task checkoutToBranch << {
+
+}
+
+
+
+
+
+
+
+
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "2.0"
 }
